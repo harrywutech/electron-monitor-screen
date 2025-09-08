@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ScreenWatcher</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: rgba(28, 28, 30, 0.85);
+            backdrop-filter: blur(20px);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            width: 320px;
+            height: 288px;
+            overflow: hidden;
+            -webkit-app-region: drag;
+        }
+
+        .container {
+            padding: 16px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            -webkit-app-region: no-drag;
+        }
+
+        .title {
+            font-size: 16px;
+            font-weight: 600;
+            color: white;
+        }
+
+        .status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #34C759;
+        }
+
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .stat-value {
+            font-size: 13px;
+            font-weight: 600;
+            color: white;
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            margin-top: auto;
+            -webkit-app-region: no-drag;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: rgba(0, 122, 255, 0.8);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: rgba(0, 122, 255, 1);
+        }
+
+        .btn-secondary {
+            background: rgba(142, 142, 147, 0.3);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(142, 142, 147, 0.5);
+        }
+
+        .shortcut-hint {
+            text-align: center;
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: 8px;
+        }
+
+        .settings-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(28, 28, 30, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 12px;
+            padding: 16px;
+            display: none;
+            flex-direction: column;
+            -webkit-app-region: drag;
+        }
+
+        .settings-panel.show {
+            display: flex;
+        }
+
+        .settings-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            -webkit-app-region: no-drag;
+        }
+
+        .close-btn {
+            background: rgba(255, 59, 48, 0.8);
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .setting-item {
+            margin-bottom: 16px;
+            -webkit-app-region: no-drag;
+        }
+
+        .setting-label {
+            display: block;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 8px;
+        }
+
+        .setting-select {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: white;
+            font-size: 12px;
+        }
+
+        .setting-select option {
+            background: rgba(28, 28, 30, 0.9);
+            color: white;
+        }
+
+        .capture-mode {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .mode-indicator {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #007AFF;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="title">ScreenWatcher</div>
+            <div class="status" id="status-indicator"></div>
+        </div>
+        
+        <div class="content">
+            <div class="stat-item">
+                <span class="stat-label">今日捕获</span>
+                <span class="stat-value" id="today-captures">0</span>
+            </div>
+            
+            <div class="stat-item">
+                <span class="stat-label">OCR处理</span>
+                <span class="stat-value" id="ocr-processed">0</span>
+            </div>
+            
+            <div class="stat-item">
+                <span class="stat-label">捕获模式</span>
+                <div class="capture-mode">
+                    <div class="mode-indicator"></div>
+                    <span id="capture-mode-text">全屏监听</span>
+                </div>
+            </div>
+            
+            <div class="stat-item">
+                <span class="stat-label">运行状态</span>
+                <span class="stat-value" id="running-status">已就绪</span>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn btn-primary" id="start-btn">开始监听</button>
+            <button class="btn btn-secondary" id="settings-btn">设置</button>
+        </div>
+        
+        <div class="shortcut-hint">
+            按 ⌘ + \ 显示/隐藏窗口
+        </div>
+    </div>
+
+    <!-- 设置面板 -->
+    <div class="settings-panel" id="settings-panel">
+        <div class="settings-header">
+            <div class="title">设置</div>
+            <button class="close-btn" id="close-settings">×</button>
+        </div>
+        
+        <div class="setting-item">
+            <label class="setting-label">捕获模式</label>
+            <select class="setting-select" id="capture-mode-select">
+                <option value="fullscreen">全屏监听</option>
+                <option value="window">窗口监听</option>
+                <option value="region">区域监听</option>
+            </select>
+        </div>
+        
+        <div class="setting-item">
+            <label class="setting-label">捕获频率</label>
+            <select class="setting-select" id="capture-interval">
+                <option value="1000">每1秒</option>
+                <option value="2000" selected>每2秒</option>
+                <option value="5000">每5秒</option>
+                <option value="10000">每10秒</option>
+            </select>
+        </div>
+        
+        <div class="setting-item">
+            <label class="setting-label">OCR语言</label>
+            <select class="setting-select" id="ocr-language">
+                <option value="zh-cn" selected>中文简体</option>
+                <option value="en">English</option>
+                <option value="zh-tw">中文繁体</option>
+            </select>
+        </div>
+        
+        <div class="setting-item">
+            <label class="setting-label">数据保存</label>
+            <select class="setting-select" id="data-retention">
+                <option value="7">保存7天</option>
+                <option value="30" selected>保存30天</option>
+                <option value="90">保存90天</option>
+                <option value="0">永久保存</option>
+            </select>
+        </div>
+    </div>
+
+    <script>
+        // 基本的界面交互
+        const startBtn = document.getElementById('start-btn');
+        const settingsBtn = document.getElementById('settings-btn');
+        const statusIndicator = document.getElementById('status-indicator');
+        const runningStatus = document.getElementById('running-status');
+        const settingsPanel = document.getElementById('settings-panel');
+        const closeSettingsBtn = document.getElementById('close-settings');
+        const captureModeText = document.getElementById('capture-mode-text');
+        const captureModeSelect = document.getElementById('capture-mode-select');
+
+        let isMonitoring = false;
+        let currentCaptureMode = 'fullscreen';
+        
+        // 捕获模式映射
+        const captureModeNames = {
+            'fullscreen': '全屏监听',
+            'window': '窗口监听', 
+            'region': '区域监听'
+        };
+
+        startBtn.addEventListener('click', () => {
+            isMonitoring = !isMonitoring;
+            
+            if (isMonitoring) {
+                startBtn.textContent = '停止监听';
+                startBtn.className = 'btn btn-secondary';
+                statusIndicator.style.background = '#FF3B30';
+                runningStatus.textContent = '监听中';
+                console.log(`开始屏幕监听 - 模式: ${captureModeNames[currentCaptureMode]}`);
+            } else {
+                startBtn.textContent = '开始监听';
+                startBtn.className = 'btn btn-primary';
+                statusIndicator.style.background = '#34C759';
+                runningStatus.textContent = '已就绪';
+                console.log('停止屏幕监听');
+            }
+        });
+
+        // 设置按钮功能
+        settingsBtn.addEventListener('click', () => {
+            settingsPanel.classList.add('show');
+            console.log('打开设置面板');
+        });
+
+        // 关闭设置按钮
+        closeSettingsBtn.addEventListener('click', () => {
+            settingsPanel.classList.remove('show');
+            console.log('关闭设置面板');
+        });
+
+        // 捕获模式选择
+        captureModeSelect.addEventListener('change', (e) => {
+            currentCaptureMode = e.target.value;
+            captureModeText.textContent = captureModeNames[currentCaptureMode];
+            
+            // 更新模式指示器颜色
+            const modeIndicator = document.querySelector('.mode-indicator');
+            switch(currentCaptureMode) {
+                case 'fullscreen':
+                    modeIndicator.style.background = '#007AFF';
+                    break;
+                case 'window':
+                    modeIndicator.style.background = '#FF9500';
+                    break;
+                case 'region':
+                    modeIndicator.style.background = '#34C759';
+                    break;
+            }
+            
+            console.log(`捕获模式切换为: ${captureModeNames[currentCaptureMode]}`);
+        });
+
+        // 其他设置选项
+        document.getElementById('capture-interval').addEventListener('change', (e) => {
+            console.log(`捕获频率设置为: ${e.target.selectedOptions[0].text}`);
+        });
+
+        document.getElementById('ocr-language').addEventListener('change', (e) => {
+            console.log(`OCR语言设置为: ${e.target.selectedOptions[0].text}`);
+        });
+
+        document.getElementById('data-retention').addEventListener('change', (e) => {
+            console.log(`数据保存设置为: ${e.target.selectedOptions[0].text}`);
+        });
+
+        // 点击设置面板外部关闭
+        settingsPanel.addEventListener('click', (e) => {
+            if (e.target === settingsPanel) {
+                settingsPanel.classList.remove('show');
+            }
+        });
+
+        // 模拟数据更新
+        setInterval(() => {
+            if (isMonitoring) {
+                const todayCaptures = document.getElementById('today-captures');
+                const ocrProcessed = document.getElementById('ocr-processed');
+                
+                todayCaptures.textContent = parseInt(todayCaptures.textContent) + 1;
+                if (Math.random() > 0.3) {
+                    ocrProcessed.textContent = parseInt(ocrProcessed.textContent) + 1;
+                }
+            }
+        }, 2000);
+
+        console.log('ScreenWatcher界面已加载');
+    </script>
+</body>
+</html>

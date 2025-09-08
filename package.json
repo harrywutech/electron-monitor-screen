@@ -1,0 +1,146 @@
+{
+  "name": "screen-watcher",
+  "version": "1.0.0",
+  "description": "ScreenWatcher - macOS屏幕监听与智能分析工具",
+  "main": "dist/main/main.js",
+  "homepage": "./",
+  "author": "ScreenWatcher Team",
+  "license": "MIT",
+  "private": true,
+  "keywords": ["screen capture", "ocr", "macos", "electron", "monitor"],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:main\" \"npm run dev:renderer\"",
+    "dev:main": "cross-env NODE_ENV=development webpack --config webpack.main.config.js --watch",
+    "dev:renderer": "cross-env NODE_ENV=development webpack serve --config webpack.renderer.config.js",
+    "build": "npm run clean && npm run build:main && npm run build:renderer",
+    "build:main": "cross-env NODE_ENV=production webpack --config webpack.main.config.js",
+    "build:renderer": "cross-env NODE_ENV=production webpack --config webpack.renderer.config.js",
+    "start": "electron .",
+    "pack": "npm run build && electron-builder --publish=never",
+    "dist": "npm run build && electron-builder --publish=never",
+    "dist:mac": "npm run build && electron-builder --mac --publish=never",
+    "dist:mac-universal": "npm run build && electron-builder --mac --universal --publish=never",
+    "release": "npm run build && electron-builder --publish=always",
+    "release:draft": "npm run build && electron-builder --publish=onTagOrDraft",
+    "clean": "rimraf dist build",
+    "postinstall": "electron-builder install-app-deps",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src --ext .ts,.tsx,.js,.jsx",
+    "lint:fix": "eslint src --ext .ts,.tsx,.js,.jsx --fix",
+    "test": "echo \"No tests specified\" && exit 0"
+  },
+  "build": {
+    "productName": "ScreenWatcher",
+    "appId": "com.screenwatcher.app",
+    "artifactName": "${productName}-${version}-${arch}.${ext}",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "assets/**/*",
+      "package.json",
+      "!src/**/*",
+      "!**/*.ts",
+      "!**/*.tsx"
+    ],
+    "extraResources": [
+      {
+        "from": "assets/",
+        "to": "assets/",
+        "filter": ["**/*"]
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "icon": "build/icon.icns",
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "notarize": {
+        "teamId": "${env.APPLE_TEAM_ID}"
+      },
+      "type": "distribution",
+      "minimumSystemVersion": "10.15.0"
+    },
+    "dmg": {
+      "title": "${productName} ${version}",
+      "icon": "build/icon.icns",
+      "iconSize": 128,
+      "window": {
+        "width": 580,
+        "height": 400
+      },
+      "contents": [
+        {
+          "x": 144,
+          "y": 180,
+          "type": "file"
+        },
+        {
+          "x": 436,
+          "y": 180,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ],
+      "background": "build/dmg-background.png"
+    },
+    "publish": {
+      "provider": "github",
+      "releaseType": "release",
+      "publishAutoUpdate": true
+    },
+    "afterSign": "scripts/notarize.js",
+    "compression": "maximum"
+  },
+  "devDependencies": {
+    "@electron/notarize": "^2.2.1",
+    "@types/node": "^20.10.0",
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17",
+    "@typescript-eslint/eslint-plugin": "^6.14.0",
+    "@typescript-eslint/parser": "^6.14.0",
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
+    "css-loader": "^6.8.1",
+    "electron": "^28.1.0",
+    "electron-builder": "^24.6.4",
+    "electron-log": "^5.0.1",
+    "eslint": "^8.55.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "html-webpack-plugin": "^5.5.4",
+    "mini-css-extract-plugin": "^2.7.6",
+    "rimraf": "^5.0.5",
+    "sass": "^1.69.5",
+    "sass-loader": "^13.3.2",
+    "style-loader": "^3.3.3",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.3.3",
+    "webpack": "^5.89.0",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^4.15.1"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "clsx": "^2.0.0",
+    "sqlite3": "^5.1.6",
+    "electron-store": "^8.1.0",
+    "electron-updater": "^6.1.7",
+    "date-fns": "^2.30.0"
+  }
+}

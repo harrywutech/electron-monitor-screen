@@ -1,0 +1,116 @@
+// ScreenWatcher 设计系统变量
+
+// 基础间距单位：4px
+$space-1: 4px;
+$space-2: 8px;
+$space-3: 12px;
+$space-4: 16px;
+$space-5: 20px;
+$space-6: 24px;
+$space-8: 32px;
+$space-10: 40px;
+$space-12: 48px;
+
+// 字体系统
+$font-system: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
+$font-mono: "SF Mono", "Monaco", "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
+
+// 字体规格
+$font-display: (size: 28px, weight: 600, line-height: 1.2, letter-spacing: -0.5px);
+$font-title-1: (size: 22px, weight: 600, line-height: 1.3, letter-spacing: -0.3px);
+$font-title-2: (size: 18px, weight: 600, line-height: 1.4, letter-spacing: -0.2px);
+$font-title-3: (size: 16px, weight: 600, line-height: 1.4, letter-spacing: -0.1px);
+$font-body: (size: 14px, weight: 400, line-height: 1.5, letter-spacing: 0px);
+$font-caption: (size: 12px, weight: 400, line-height: 1.4, letter-spacing: 0px);
+$font-label: (size: 11px, weight: 500, line-height: 1.3, letter-spacing: 0.1px);
+
+// 毛玻璃效果
+$glass-blur: blur(20px) saturate(180%);
+$glass-light: blur(15px) saturate(160%);
+$glass-subtle: blur(10px) saturate(140%);
+
+// 阴影系统
+$shadow-1: 0 1px 3px rgba(0, 0, 0, 0.1);
+$shadow-2: 0 2px 8px rgba(0, 0, 0, 0.15);
+$shadow-3: 0 4px 16px rgba(0, 0, 0, 0.2);
+$shadow-4: 0 8px 32px rgba(0, 0, 0, 0.25);
+$shadow-focus: 0 0 0 3px rgba(0, 122, 255, 0.3);
+
+// 内阴影（毛玻璃内发光）
+$inner-glow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+$inner-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+
+// 层次z-index
+$z-base: 0;
+$z-elevated: 10;
+$z-overlay: 100;
+$z-modal: 1000;
+$z-toast: 2000;
+$z-tooltip: 3000;
+
+// Mixin定义
+@mixin glass-effect($opacity: 0.85) {
+  background: rgba(30, 30, 30, $opacity);
+  backdrop-filter: $glass-blur;
+  -webkit-backdrop-filter: $glass-blur;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: $shadow-2, $inner-glow;
+}
+
+@mixin glass-light($opacity: 0.9) {
+  background: rgba(45, 45, 45, $opacity);
+  backdrop-filter: $glass-light;
+  -webkit-backdrop-filter: $glass-light;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: $shadow-2;
+}
+
+@mixin glass-subtle($opacity: 0.8) {
+  background: rgba(60, 60, 60, $opacity);
+  backdrop-filter: $glass-subtle;
+  -webkit-backdrop-filter: $glass-subtle;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+@mixin font-style($font-config) {
+  font-size: map-get($font-config, size);
+  font-weight: map-get($font-config, weight);
+  line-height: map-get($font-config, line-height);
+  letter-spacing: map-get($font-config, letter-spacing);
+}
+
+// 响应式断点
+$breakpoints: (
+  sm: 480px,
+  md: 768px,
+  lg: 1024px,
+  xl: 1200px
+);
+
+@mixin respond-to($breakpoint) {
+  @if map-has-key($breakpoints, $breakpoint) {
+    @media (min-width: map-get($breakpoints, $breakpoint)) {
+      @content;
+    }
+  }
+}
+
+// 动画过渡
+$transition-fast: 0.1s ease;
+$transition-normal: 0.2s ease;
+$transition-slow: 0.3s ease;
+
+// 常用动画
+@mixin smooth-transition($properties...) {
+  transition: #{$properties, $transition-normal};
+}
+
+@mixin hover-lift {
+  transform: translateY(-1px);
+  box-shadow: $shadow-2;
+}
+
+@mixin active-press {
+  transform: translateY(0);
+  transition: $transition-fast;
+}

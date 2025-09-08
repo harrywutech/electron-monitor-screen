@@ -1,0 +1,133 @@
+.app-header {
+  height: 44px;
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 12px 12px 0 0;
+}
+
+.header-content {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.app-icon {
+  width: 20px;
+  height: 20px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #007AFF 0%, #5AC8FA 100%);
+  border-radius: 6px;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  border: 1px solid rgba(28, 28, 30, 0.8);
+}
+
+.status-dot.active {
+  background: #34C759;
+  box-shadow: 0 0 4px rgba(52, 199, 89, 0.6);
+}
+
+.status-dot.inactive {
+  background: #8E8E93;
+}
+
+.app-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+  margin: 0;
+  letter-spacing: -0.2px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.header-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.header-btn:active {
+  background: rgba(255, 255, 255, 0.05);
+  transform: scale(0.95);
+}
+
+.close-btn:hover {
+  background: rgba(255, 59, 48, 0.8);
+  color: white;
+}
+
+.minimize-btn:hover {
+  background: rgba(255, 204, 0, 0.8);
+  color: white;
+}
+
+/* 响应式设计 */
+@media (max-width: 350px) {
+  .app-header {
+    padding: 6px 12px;
+    height: 38px;
+  }
+  
+  .app-title {
+    font-size: 12px;
+  }
+  
+  .header-btn {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .header-btn svg {
+    width: 10px;
+    height: 10px;
+  }
+}
+
+/* 深色模式优化 */
+@media (prefers-color-scheme: dark) {
+  .app-header {
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.03);
+  }
+}

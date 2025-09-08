@@ -1,0 +1,232 @@
+@import '../../styles/variables.scss';
+
+.indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $space-2 $space-3;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  
+  &.size_sm {
+    padding: $space-1 $space-2;
+    font-size: 11px;
+    
+    .dot {
+      width: 6px;
+      height: 6px;
+    }
+  }
+  
+  &.size_md {
+    padding: $space-2 $space-3;
+    font-size: 12px;
+    
+    .dot {
+      width: 8px;
+      height: 8px;
+    }
+  }
+  
+  &.size_lg {
+    padding: $space-3 $space-4;
+    font-size: 13px;
+    
+    .dot {
+      width: 10px;
+      height: 10px;
+    }
+  }
+  
+  // 状态样式
+  &.status_active {
+    background: rgba(48, 209, 88, 0.1);
+    color: var(--success);
+    border: 1px solid rgba(48, 209, 88, 0.2);
+    
+    .dot {
+      background: var(--success);
+      animation: pulse 2s infinite;
+    }
+  }
+  
+  &.status_inactive {
+    background: rgba(142, 142, 147, 0.1);
+    color: var(--text-tertiary);
+    border: 1px solid rgba(142, 142, 147, 0.2);
+    
+    .dot {
+      background: var(--text-tertiary);
+    }
+  }
+  
+  &.status_error {
+    background: rgba(255, 69, 58, 0.1);
+    color: var(--error);
+    border: 1px solid rgba(255, 69, 58, 0.2);
+    
+    .dot {
+      background: var(--error);
+      animation: blink 1s infinite;
+    }
+  }
+  
+  &.status_warning {
+    background: rgba(255, 159, 10, 0.1);
+    color: var(--warning);
+    border: 1px solid rgba(255, 159, 10, 0.2);
+    
+    .dot {
+      background: var(--warning);
+    }
+  }
+  
+  &.status_loading {
+    background: rgba(100, 210, 255, 0.1);
+    color: var(--info);
+    border: 1px solid rgba(100, 210, 255, 0.2);
+    
+    .dot {
+      background: var(--info);
+      animation: spin 1s linear infinite;
+    }
+  }
+  
+  // 简洁模式（只显示点）
+  &.minimal {
+    padding: 0;
+    background: transparent;
+    border: none;
+    
+    .text {
+      display: none;
+    }
+  }
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.text {
+  white-space: nowrap;
+}
+
+// 动画
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+// 详细状态指示器
+.detailedIndicator {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  padding: $space-3;
+  background: var(--surface-1);
+  border: 1px solid var(--border-1);
+  border-radius: 8px;
+  backdrop-filter: $glass-subtle;
+  -webkit-backdrop-filter: $glass-subtle;
+}
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  
+  .label {
+    @include font-style($font-caption);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: $space-2;
+  }
+  
+  .value {
+    @include font-style($font-caption);
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+}
+
+// 悬浮状态指示器
+.floatingIndicator {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: $z-overlay;
+  padding: $space-2 $space-3;
+  background: var(--bg-tertiary);
+  backdrop-filter: $glass-subtle;
+  -webkit-backdrop-filter: $glass-subtle;
+  border: 1px solid var(--border-3);
+  border-radius: 12px;
+  box-shadow: $shadow-2;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: $shadow-3;
+  }
+  
+  &.expanded {
+    min-width: 200px;
+  }
+}
+
+// 带统计信息的指示器
+.statisticsIndicator {
+  display: flex;
+  flex-direction: column;
+  gap: $space-1;
+  
+  .mainStatus {
+    display: flex;
+    align-items: center;
+    gap: $space-2;
+    
+    .statusText {
+      @include font-style($font-body);
+      font-weight: 500;
+    }
+  }
+  
+  .stats {
+    @include font-style($font-caption);
+    color: var(--text-tertiary);
+    margin-left: 18px; // 对齐到状态文本
+  }
+}

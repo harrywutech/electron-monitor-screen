@@ -1,0 +1,239 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      draft:
+        description: 'Create draft release'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  ELECTRON_CACHE: ${{ github.workspace }}/.cache/electron
+  ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.cache/electron-builder
+
+jobs:
+  build-and-release:
+    runs-on: macos-latest
+    
+    strategy:
+      matrix:
+        arch: [x64, arm64]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Get version from tag
+      id: version
+      run: |
+        if [[ "${{ github.ref }}" =~ ^refs/tags/v(.*)$ ]]; then
+          echo "VERSION=${BASH_REMATCH[1]}" >> $GITHUB_ENV
+          echo "TAG_NAME=${BASH_REMATCH[0]}" >> $GITHUB_ENV
+        else
+          echo "VERSION=0.0.0-dev" >> $GITHUB_ENV
+          echo "TAG_NAME=v0.0.0-dev" >> $GITHUB_ENV
+        fi
+
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.npm
+          ~/.cache/electron
+          ~/.cache/electron-builder
+        key: ${{ runner.os }}-build-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-build-
+
+    - name: Install dependencies
+      run: |
+        npm ci --prefer-offline --no-audit
+        npm run postinstall
+
+    - name: Run tests
+      run: |
+        npm run lint
+        npm run type-check
+        # npm test # 如果有测试的话
+
+    - name: Import Apple certificate
+      if: startsWith(github.ref, 'refs/tags/')
+      env:
+        BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+        P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+        KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+      run: |
+        # 创建变量
+        CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+        KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+        # 导入证书
+        echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+
+        # 创建临时keychain
+        security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+        security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+        security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+        # 导入证书
+        security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+        security list-keychain -d user -s $KEYCHAIN_PATH
+
+        # 设置分区列表
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+    - name: Build application
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        APPLE_ID: ${{ secrets.APPLE_ID }}
+        APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+        APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        CSC_IDENTITY_AUTO_DISCOVERY: 'true'
+      run: |
+        npm run build
+        
+        # 根据架构构建
+        if [ "${{ matrix.arch }}" = "x64" ]; then
+          npm run dist:mac -- --x64
+        elif [ "${{ matrix.arch }}" = "arm64" ]; then
+          npm run dist:mac -- --arm64
+        fi
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: screenwatcher-${{ matrix.arch }}-${{ env.VERSION }}
+        path: |
+          dist/*.dmg
+          dist/*.zip
+          dist/latest-mac.yml
+        retention-days: 7
+
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/') && matrix.arch == 'x64'
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ env.TAG_NAME }}
+        name: ScreenWatcher ${{ env.VERSION }}
+        draft: ${{ github.event.inputs.draft == 'true' }}
+        prerelease: ${{ contains(env.VERSION, 'beta') || contains(env.VERSION, 'alpha') || contains(env.VERSION, 'rc') }}
+        generate_release_notes: true
+        body: |
+          ## 🎉 ScreenWatcher ${{ env.VERSION }}
+          
+          ### 📥 下载
+          
+          **macOS 系统要求**: macOS 10.15 (Catalina) 或更高版本
+          
+          - **Intel 处理器**: 下载 `ScreenWatcher-${{ env.VERSION }}-x64.dmg`
+          - **Apple Silicon (M1/M2/M3)**: 下载 `ScreenWatcher-${{ env.VERSION }}-arm64.dmg`
+          - **通用版本**: 下载 `ScreenWatcher-${{ env.VERSION }}-universal.dmg`（如可用）
+          
+          ### 🛠️ 安装说明
+          
+          1. 下载适合您处理器的 `.dmg` 文件
+          2. 双击打开，将 ScreenWatcher 拖拽到 Applications 文件夹
+          3. 首次运行时右键点击选择"打开"
+          4. 授权屏幕录制权限（系统偏好设置 > 安全性与隐私 > 隐私 > 屏幕录制）
+          
+          ### 🔧 技术信息
+          
+          - Electron 版本: ${{ env.ELECTRON_VERSION }}
+          - Node.js 版本: ${{ env.NODE_VERSION }}
+          - 构建日期: ${{ env.BUILD_DATE }}
+          
+          ---
+          
+          完整更新日志请查看下方的自动生成内容。
+        files: |
+          dist/*.dmg
+          dist/*.zip
+          dist/latest-mac.yml
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Cleanup keychain
+      if: always() && startsWith(github.ref, 'refs/tags/')
+      run: |
+        security delete-keychain $RUNNER_TEMP/app-signing.keychain-db || true
+
+  # 通用版本构建作业
+  build-universal:
+    needs: [build-and-release]
+    runs-on: macos-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Get version from tag
+      id: version
+      run: |
+        if [[ "${{ github.ref }}" =~ ^refs/tags/v(.*)$ ]]; then
+          echo "VERSION=${BASH_REMATCH[1]}" >> $GITHUB_ENV
+        fi
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Import Apple certificate
+      env:
+        BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+        P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+        KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+      run: |
+        CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+        KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+        echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o $CERTIFICATE_PATH
+        security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+        security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+        security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+        security import $CERTIFICATE_PATH -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+        security list-keychain -d user -s $KEYCHAIN_PATH
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+
+    - name: Build universal application
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        APPLE_ID: ${{ secrets.APPLE_ID }}
+        APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+        APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        CSC_IDENTITY_AUTO_DISCOVERY: 'true'
+      run: |
+        npm run build
+        npm run dist:mac-universal
+
+    - name: Upload universal build to release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ github.ref }}
+        files: |
+          dist/*universal*.dmg
+          dist/*universal*.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Cleanup keychain
+      if: always()
+      run: |
+        security delete-keychain $RUNNER_TEMP/app-signing.keychain-db || true

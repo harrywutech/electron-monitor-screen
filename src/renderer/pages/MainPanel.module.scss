@@ -1,0 +1,231 @@
+@import '../styles/variables.scss';
+
+.mainPanel {
+  width: 320px;
+  height: 288px;
+  display: flex;
+  flex-direction: column;
+  -webkit-app-region: drag;
+  
+  .panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: $space-4;
+  flex: 1;
+  padding: $space-4;
+  -webkit-app-region: no-drag;
+}
+
+.statusSection {
+  display: flex;
+  flex-direction: column;
+  gap: $space-2;
+  padding: $space-3;
+  background: var(--surface-1);
+  border-radius: 8px;
+  border: 1px solid var(--border-1);
+  
+  .errorMessage {
+    @include font-style($font-caption);
+    color: var(--error);
+    padding: $space-2;
+    background: rgba(255, 69, 58, 0.1);
+    border: 1px solid rgba(255, 69, 58, 0.2);
+    border-radius: 4px;
+    margin-top: $space-2;
+  }
+}
+
+.statsSection {
+  .statsGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: $space-3;
+  }
+  
+  .statItem {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    
+    .statValue {
+      @include font-style($font-title-3);
+      color: var(--text-primary);
+      font-weight: 600;
+      line-height: 1;
+    }
+    
+    .statLabel {
+      @include font-style($font-caption);
+      color: var(--text-tertiary);
+      margin-top: $space-1;
+    }
+  }
+}
+
+.warningSection {
+  display: flex;
+  align-items: flex-start;
+  gap: $space-3;
+  padding: $space-3;
+  background: rgba(255, 159, 10, 0.1);
+  border: 1px solid rgba(255, 159, 10, 0.2);
+  border-radius: 8px;
+  
+  .warningIcon {
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  
+  .warningText {
+    flex: 1;
+    
+    .warningTitle {
+      @include font-style($font-body);
+      color: var(--warning);
+      font-weight: 500;
+      margin-bottom: $space-1;
+    }
+    
+    .warningDescription {
+      @include font-style($font-caption);
+      color: var(--text-secondary);
+    }
+  }
+}
+
+.actionsSection {
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  
+  .secondaryActions {
+    display: flex;
+    gap: $space-2;
+    
+    > * {
+      flex: 1;
+    }
+  }
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $space-2 $space-4;
+  background: var(--surface-1);
+  border-top: 1px solid var(--border-1);
+  -webkit-app-region: no-drag;
+  
+  .versionInfo {
+    @include font-style($font-caption);
+    color: var(--text-tertiary);
+    font-weight: 500;
+  }
+  
+  .quickActions {
+    display: flex;
+    align-items: center;
+    gap: $space-1;
+  }
+}
+
+// 响应式调整（紧凑模式）
+@media (max-width: 300px), (max-height: 250px) {
+  .mainPanel {
+    width: 280px;
+    height: 240px;
+  }
+  
+  .content {
+    padding: $space-3;
+    gap: $space-3;
+  }
+  
+  .statsSection {
+    .statsGrid {
+      gap: $space-2;
+    }
+    
+    .statItem {
+      .statValue {
+        font-size: 14px;
+      }
+      
+      .statLabel {
+        font-size: 10px;
+      }
+    }
+  }
+  
+  .warningSection {
+    padding: $space-2;
+    gap: $space-2;
+    
+    .warningIcon {
+      font-size: 16px;
+    }
+    
+    .warningText {
+      .warningTitle {
+        font-size: 12px;
+      }
+      
+      .warningDescription {
+        font-size: 10px;
+      }
+    }
+  }
+}
+
+// 动画效果
+.statusSection,
+.statsSection,
+.warningSection {
+  transition: all 0.3s ease;
+  
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: $shadow-2;
+  }
+}
+
+// 加载状态覆盖层
+.loadingOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: inherit;
+  z-index: $z-overlay;
+  
+  .loadingSpinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--surface-2);
+    border-top: 2px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

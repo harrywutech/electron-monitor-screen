@@ -1,0 +1,33 @@
+{
+  "name": "screen-watcher-simple",
+  "version": "1.0.0",
+  "description": "ScreenWatcher - 简化测试版本",
+  "main": "main-simple.js",
+  "scripts": {
+    "start": "electron main-simple.js",
+    "test": "electron main-simple.js",
+    "pack": "electron-builder --publish=never",
+    "dist": "electron-builder --publish=never"
+  },
+  "build": {
+    "productName": "ScreenWatcher",
+    "appId": "com.screenwatcher.app",
+    "files": [
+      "main-simple.js",
+      "test-ui.html",
+      "preload.js"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        }
+      ]
+    }
+  },
+  "dependencies": {
+    "electron": "^28.1.0"
+  }
+}

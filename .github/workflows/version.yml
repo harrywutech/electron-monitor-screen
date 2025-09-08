@@ -1,0 +1,280 @@
+name: Version Management
+
+on:
+  workflow_dispatch:
+    inputs:
+      version-type:
+        description: 'Version type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+        - patch
+        - minor
+        - major
+        - prerelease
+      prerelease-id:
+        description: 'Prerelease identifier (for prerelease only)'
+        required: false
+        default: 'beta'
+        type: choice
+        options:
+        - alpha
+        - beta
+        - rc
+      custom-version:
+        description: 'Custom version (overrides version-type)'
+        required: false
+        type: string
+
+jobs:
+  version:
+    runs-on: macos-latest
+    
+    outputs:
+      new-version: ${{ steps.version.outputs.new-version }}
+      should-release: ${{ steps.version.outputs.should-release }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Configure Git
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Get current version
+      id: current
+      run: |
+        CURRENT_VERSION=$(node -p "require('./package.json').version")
+        echo "current-version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+        echo "Current version: $CURRENT_VERSION"
+
+    - name: Calculate new version
+      id: version
+      run: |
+        set -e
+        
+        if [ -n "${{ github.event.inputs.custom-version }}" ]; then
+          NEW_VERSION="${{ github.event.inputs.custom-version }}"
+          echo "Using custom version: $NEW_VERSION"
+        else
+          VERSION_TYPE="${{ github.event.inputs.version-type }}"
+          
+          if [ "$VERSION_TYPE" = "prerelease" ]; then
+            PRERELEASE_ID="${{ github.event.inputs.prerelease-id }}"
+            # 检查当前版本是否已经是prerelease
+            CURRENT_VERSION="${{ steps.current.outputs.current-version }}"
+            if [[ "$CURRENT_VERSION" == *"-$PRERELEASE_ID"* ]]; then
+              # 增加prerelease号码
+              NEW_VERSION=$(npm version prerelease --no-git-tag-version --preid=$PRERELEASE_ID)
+            else
+              # 创建新的prerelease
+              NEW_VERSION=$(npm version pre${{ github.event.inputs.version-type }} --no-git-tag-version --preid=$PRERELEASE_ID)
+            fi
+          else
+            NEW_VERSION=$(npm version $VERSION_TYPE --no-git-tag-version)
+          fi
+          
+          # 移除 'v' 前缀
+          NEW_VERSION=${NEW_VERSION#v}
+        fi
+        
+        echo "new-version=$NEW_VERSION" >> $GITHUB_OUTPUT
+        echo "should-release=true" >> $GITHUB_OUTPUT
+        echo "New version will be: $NEW_VERSION"
+
+    - name: Update package.json version
+      if: github.event.inputs.custom-version != ''
+      run: |
+        npm version ${{ steps.version.outputs.new-version }} --no-git-tag-version
+
+    - name: Run tests
+      run: |
+        npm run lint
+        npm run type-check
+
+    - name: Update CHANGELOG.md
+      run: |
+        NEW_VERSION="${{ steps.version.outputs.new-version }}"
+        DATE=$(date +"%Y-%m-%d")
+        
+        # 创建 CHANGELOG.md 如果不存在
+        if [ ! -f CHANGELOG.md ]; then
+          cat > CHANGELOG.md << EOF
+        # 更新日志
+        
+        本文档记录了项目的所有重要更改。
+        
+        格式基于 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)，
+        项目遵循 [语义化版本控制](https://semver.org/lang/zh-CN/)。
+        
+        EOF
+        fi
+        
+        # 准备更新日志条目
+        cat > temp_changelog.md << EOF
+        ## [$NEW_VERSION] - $DATE
+        
+        ### 新增
+        - 待补充新功能描述
+        
+        ### 修改
+        - 待补充功能改进描述
+        
+        ### 修复
+        - 待补充bug修复描述
+        
+        ### 已知问题
+        - 如有已知问题请在此列出
+        
+        EOF
+        
+        # 将新条目插入到 CHANGELOG.md 中
+        if grep -q "## \[" CHANGELOG.md; then
+          # 如果已有版本记录，插入到第一个版本之前
+          sed -i '' '/^## \[/i\
+        '"$(cat temp_changelog.md)"'
+        ' CHANGELOG.md
+        else
+          # 如果没有版本记录，追加到文件末尾
+          cat temp_changelog.md >> CHANGELOG.md
+        fi
+        
+        rm temp_changelog.md
+
+    - name: Commit changes
+      run: |
+        NEW_VERSION="${{ steps.version.outputs.new-version }}"
+        
+        git add package.json package-lock.json CHANGELOG.md
+        
+        # 检查是否有更改需要提交
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+          exit 0
+        fi
+        
+        git commit -m "chore: bump version to v$NEW_VERSION
+
+        📝 Version bump from ${{ steps.current.outputs.current-version }} to $NEW_VERSION
+        
+        🔖 Generated with [Claude Code](https://claude.ai/code)
+        
+        Co-Authored-By: Claude <noreply@anthropic.com>"
+
+    - name: Create and push tag
+      run: |
+        NEW_VERSION="${{ steps.version.outputs.new-version }}"
+        
+        # 创建带注释的标签
+        git tag -a "v$NEW_VERSION" -m "Release v$NEW_VERSION
+
+        🎉 ScreenWatcher $NEW_VERSION 发布
+        
+        ## 主要更改
+        - 请查看 CHANGELOG.md 了解详细更改
+        - 此版本通过自动化工作流创建
+        
+        ## 下载
+        - macOS Intel: ScreenWatcher-$NEW_VERSION-x64.dmg  
+        - macOS Apple Silicon: ScreenWatcher-$NEW_VERSION-arm64.dmg
+        - 通用版本: ScreenWatcher-$NEW_VERSION-universal.dmg
+        
+        🔖 Generated with [Claude Code](https://claude.ai/code)
+        
+        Co-Authored-By: Claude <noreply@anthropic.com>"
+        
+        echo "Tag v$NEW_VERSION created"
+
+    - name: Push changes and tags
+      run: |
+        git push origin ${{ github.ref_name }}
+        git push origin --tags
+        
+        echo "✅ Version ${{ steps.version.outputs.new-version }} committed and tagged"
+        echo "🚀 Release workflow will be triggered automatically"
+
+    - name: Create release summary
+      run: |
+        NEW_VERSION="${{ steps.version.outputs.new-version }}"
+        
+        cat >> $GITHUB_STEP_SUMMARY << EOF
+        # 🎉 版本更新完成
+        
+        ## 版本信息
+        - **原版本**: ${{ steps.current.outputs.current-version }}
+        - **新版本**: $NEW_VERSION
+        - **更新类型**: ${{ github.event.inputs.version-type }}
+        
+        ## 后续操作
+        1. ✅ 版本号已更新到 package.json
+        2. ✅ CHANGELOG.md 已更新（请手动完善更新内容）
+        3. ✅ Git 标签 v$NEW_VERSION 已创建
+        4. 🔄 Release 工作流将自动触发
+        
+        ## 链接
+        - 📦 [查看发布页面](../../releases)
+        - 🔨 [查看构建状态](../../actions/workflows/release.yml)
+        - 📝 [编辑更新日志](../../edit/${{ github.ref_name }}/CHANGELOG.md)
+        
+        ## 提醒
+        请在发布前完善 CHANGELOG.md 中的更新内容描述。
+        EOF
+
+  # 可选：自动创建 Pull Request 来更新 CHANGELOG
+  create-changelog-pr:
+    needs: version
+    if: needs.version.outputs.should-release == 'true'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.ref_name }}
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Create PR for CHANGELOG update
+      uses: peter-evans/create-pull-request@v5
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        commit-message: "docs: update CHANGELOG for v${{ needs.version.outputs.new-version }}"
+        title: "📝 完善 v${{ needs.version.outputs.new-version }} 更新日志"
+        body: |
+          ## 📝 更新日志完善
+          
+          此 PR 是为了完善 v${{ needs.version.outputs.new-version }} 版本的更新日志。
+          
+          ### 请完成以下内容：
+          
+          - [ ] 在 `CHANGELOG.md` 中补充具体的新功能描述
+          - [ ] 添加重要的功能改进说明  
+          - [ ] 列出修复的问题和bug
+          - [ ] 标注任何破坏性更改
+          - [ ] 添加升级注意事项（如需要）
+          
+          ### 当前版本信息
+          - **版本**: v${{ needs.version.outputs.new-version }}
+          - **类型**: ${{ github.event.inputs.version-type }}
+          - **标签**: [v${{ needs.version.outputs.new-version }}](../../releases/tag/v${{ needs.version.outputs.new-version }})
+          
+          完善更新日志后，此 PR 将帮助用户更好地了解版本更新内容。
+          
+          ---
+          🤖 此 PR 由版本管理工作流自动创建
+        branch: changelog/v${{ needs.version.outputs.new-version }}
+        delete-branch: true
